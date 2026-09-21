@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+
+    <meta
+      name="description"
+      content="A browser-based virtual cigarette controlled by hand and face motion."
+    />
+
+    <title>Virtual Cigarette</title>
+  </head>
+
+  <body>
+    <main id="app">
+
+      <!-- HEADER -->
+      <section class="hud">
+
+        <div>
+          <h1>Virtual Cigarette</h1>
+
+          <p id="status">
+            Camera is off.
+          </p>
+        </div>
+
+        <!-- Puff indicators -->
+        <div
+          class="puffs"
+          aria-label="Puff count"
+        >
+          <span id="puff-1"></span>
+          <span id="puff-2"></span>
+          <span id="puff-3"></span>
+        </div>
+
+      </section>
+
+
+      <!-- CAMERA / CANVAS -->
+      <section class="stage">
+
+        <video
+          id="camera"
+          autoplay
+          muted
+          playsinline
+        ></video>
+
+        <canvas id="overlay"></canvas>
+
+
+        <!-- Initial camera screen -->
+        <div
+          id="start-card"
+          class="start-card"
+        >
+
+          <h2>
+            Camera-controlled demo
+          </h2>
+
+          <p>
+            Allow camera access, then move your hand into view.
+            Bring the virtual cigarette toward your mouth to
+            simulate a puff.
+          </p>
+
+          <button id="start-camera">
+            Start camera
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <!-- CONTROLS -->
+      <section class="controls">
+
+        <button
+          id="reset"
+          disabled
+        >
+          Reset cigarette
+        </button>
+
+
+        <label class="toggle">
+
+          <input
+            id="debug"
+            type="checkbox"
+          />
+
+          <span>
+            Debug landmarks
+          </span>
+
+        </label>
+
+      </section>
+
+
+      <!-- INFORMATION -->
+      <p class="note">
+        This is for fun.
+        Smoking is not good for you
+      </p>
+
+    </main>
+
+
+    <script
+      type="module"
+      src="/src/main.js"
+    ></script>
+
+  </body>
+</html>
