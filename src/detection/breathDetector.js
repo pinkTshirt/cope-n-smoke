@@ -1,128 +1,115 @@
 export class BreathDetector {
-
   constructor() {
+    this.state = "ready";
 
-    this.state =
-      "idle";
+    this.openThreshold = 8;
+    this.closeThreshold = 5;
 
-    this.lastMouthOpening =
-      0;
-
-    this.lastChange =
-      0;
-
-    this.cooldownUntil =
-      0;
+    this.lastEventTime = 0;
+    this.cooldown = 600;
   }
 
-
-  reset() {
-
-    this.state =
-      "idle";
-
-    this.lastMouthOpening =
-      0;
-
-    this.lastChange =
-      0;
-
-    this.cooldownUntil =
-      0;
-  }
-
-
-  update(
-    face,
-    nearMouth,
-    now
-  ) {
-
-   
-
+  update(face, nearMouth, now) {
     if (!face) {
+      return null;
+    }
 
-      this.lastMouthOpening =
-        0;
+    const opening = face.mouthOpening;
+
+
+    /*
+      ----------------------------------------
+      INHALE
+      ----------------------------------------
+
+      Cigarette MUST be near the mouth.
+
+      First mouth opening = inhale.
+    */
+
+    if (
+      this.state === "ready" &&
+      nearMouth &&
+      opening >= this.openThreshold
+    ) {
+      this.state = "inhale";
+
+      console.log("INHALE detected");
+
+      return "inhale";
+    }
+
+
+    /*
+      ----------------------------------------
+      CLOSE MOUTH AFTER INHALE
+      ----------------------------------------
+    */
+
+    if (
+      this.state === "inhale" &&
+      opening <= this.closeThreshold
+    ) {
+      this.state = "holding";
+
+      console.log(
+        "Mouth closed - ready for exhale"
+      );
 
       return null;
     }
 
 
-    
-    if (!nearMouth) {
+    /*
+      ----------------------------------------
+      EXHALE
+      ----------------------------------------
 
-      this.lastMouthOpening =
-        face.mouthOpening;
+      IMPORTANT:
+      There is NO nearMouth check here.
+
+      The cigarette can be anywhere.
+    */
+
+    if (
+      this.state === "holding" &&
+      opening >= this.openThreshold &&
+      now - this.lastEventTime >
+        this.cooldown
+    ) {
+      this.state = "exhale";
+
+      this.lastEventTime = now;
+
+      console.log(
+        "EXHALE detected - cigarette position ignored"
+      );
+
+      return "exhale";
+    }
+
+
+    /*
+      ----------------------------------------
+      CLOSE AFTER EXHALE
+      ----------------------------------------
+
+      This resets the detector.
+    */
+
+    if (
+      this.state === "exhale" &&
+      opening <= this.closeThreshold
+    ) {
+      this.state = "ready";
+
+      console.log(
+        "Ready for next inhale"
+      );
 
       return null;
     }
-
-
-    
-
-    if (
-      now <
-      this.cooldownUntil
-    ) {
-
-      this.lastMouthOpening =
-        face.mouthOpening;
-
-      return null;
-    }
-
-
-    const opening =
-      face.mouthOpening;
-
-
-    
-
-    if (
-      this.state === "idle" &&
-      opening > 13
-    ) {
-
-      this.state =
-        "open";
-
-      this.lastChange =
-        now;
-    }
-
-
-    
-
-    if (
-      this.state === "open" &&
-      opening < 8 &&
-      now -
-        this.lastChange >
-        180
-    ) {
-
-      this.state =
-        "idle";
-
-
-      this.cooldownUntil =
-        now + 1000;
-
-
-      this.lastMouthOpening =
-        opening;
-
-
-      return "puff";
-    }
-
-
-    this.lastMouthOpening =
-      opening;
-
 
     return null;
   }
-
 }
