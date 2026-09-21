@@ -8,43 +8,27 @@
       content="width=device-width, initial-scale=1.0"
     />
 
-    <meta
-      name="description"
-      content="A browser-based virtual cigarette controlled by hand and face motion."
-    />
-
     <title>Virtual Cigarette</title>
   </head>
 
   <body>
-    <main id="app">
+    <main class="app">
 
-      <!-- HEADER -->
-      <section class="hud">
-
+      <header class="topbar">
         <div>
           <h1>Virtual Cigarette</h1>
-
-          <p id="status">
-            Camera is off.
-          </p>
+          <div id="status">Camera inactive</div>
         </div>
 
-        <!-- Puff indicators -->
-        <div
-          class="puffs"
-          aria-label="Puff count"
-        >
-          <span id="puff-1"></span>
-          <span id="puff-2"></span>
-          <span id="puff-3"></span>
+        <div class="status-dots">
+          <span></span>
+          <span></span>
+          <span></span>
         </div>
+      </header>
 
-      </section>
 
-
-      <!-- CAMERA / CANVAS -->
-      <section class="stage">
+      <section class="camera-shell">
 
         <video
           id="camera"
@@ -56,63 +40,70 @@
         <canvas id="overlay"></canvas>
 
 
-        <!-- Initial camera screen -->
-        <div
-          id="start-card"
-          class="start-card"
-        >
+        <div id="startCard">
 
-          <h2>
-            Camera-controlled demo
-          </h2>
+          <div class="start-card-inner">
 
-          <p>
-            Allow camera access, then move your hand into view.
-            Bring the virtual cigarette toward your mouth to
-            simulate a puff.
-          </p>
+            <h2>Camera-controlled demo</h2>
 
-          <button id="start-camera">
-            Start camera
-          </button>
+            <p>
+              Allow camera access, then move your hand
+              into view. Bring the virtual cigarette
+              toward your mouth to simulate a puff.
+            </p>
+
+            <button
+              id="startButton"
+              type="button"
+            >
+              Start camera
+            </button>
+
+          </div>
 
         </div>
 
       </section>
 
 
-      <!-- CONTROLS -->
-      <section class="controls">
+      <div class="controls">
 
         <button
-          id="reset"
+          id="resetButton"
+          type="button"
           disabled
         >
           Reset cigarette
         </button>
 
-
-        <label class="toggle">
-
+        <label class="debug-control">
           <input
-            id="debug"
+            id="debugToggle"
             type="checkbox"
           />
 
-          <span>
-            Debug landmarks
-          </span>
-
+          <span>Debug landmarks</span>
         </label>
 
-      </section>
+      </div>
 
 
-      <!-- INFORMATION -->
-      <p class="note">
-        This is for fun.
-        Smoking is not good for you
-      </p>
+      <div class="puff-indicators">
+
+        <span class="puff-dot" id="puff1"></span>
+        <span class="puff-dot" id="puff2"></span>
+        <span class="puff-dot" id="puff3"></span>
+
+        <span id="puffCount">
+          Puffs: 0/3
+        </span>
+
+      </div>
+
+
+      <div class="footer-note">
+        This is for fun. Smoking is not good for you.
+      </div>
 
     </main>
 
@@ -121,6 +112,5 @@
       type="module"
       src="/src/main.js"
     ></script>
-
   </body>
 </html>
