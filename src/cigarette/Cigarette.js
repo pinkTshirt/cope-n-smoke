@@ -1,468 +1,318 @@
-function lerp(
-  a,
-  b,
-  t
-) {
-
-  return a +
-    (b - a) *
-    t;
-}
-
-
 export class Cigarette {
-
   constructor() {
-
-    this.width =
-      155;
-
-    this.height =
-      15;
-
-    this.puffs =
-      0;
-
-    this.remaining =
-      1;
-
-    this.position = {
-
-      x: 0,
-      y: 0
-
-    };
-
-    this.target =
-      null;
-
-    this.tip = {
-
-      x: 0,
-      y: 0
-
-    };
-
-    this.angle =
-      0;
-
-    this.dropY =
-      0;
-
-    this.dropVelocity =
-      0;
-
-    this.finished =
-      false;
-
-    this.dropComplete =
-      false;
-
-
     this.spawn();
   }
 
-
-
-
   spawn() {
+    this.width = 82;
+    this.height = 8;
 
-    this.puffs =
-      0;
+    this.x = 300;
+    this.y = 300;
 
-    this.remaining =
-      1;
+    this.targetX = 300;
+    this.targetY = 300;
 
-    this.finished =
-      false;
+    this.angle = 0;
 
-    this.dropComplete =
-      false;
+    this.puffs = 0;
+    this.maxPuffs = 3;
 
-    this.dropY =
-      0;
+    this.finished = false;
+    this.dropComplete = false;
 
-    this.dropVelocity =
-      0;
-
-    this.target =
-      null;
-
-
-    this.position = {
-
-      x:
-        window.innerWidth / 2,
-
-      y:
-        window.innerHeight / 2
-
-    };
-
+    this.dropVelocity = 0;
   }
 
+  reset() {
+    this.spawn();
+  }
 
-
-
-  update(
-    dt,
-    target,
-    mouth
-  ) {
-
+  update(dt, target, mouth) {
     if (this.finished) {
       return;
     }
 
-
     if (target) {
+      this.targetX = target.x;
+      this.targetY = target.y;
 
-      this.target =
-        target;
+      this.x +=
+        (this.targetX - this.x) *
+        Math.min(dt * 12, 1);
 
-
-      this.position.x =
-        lerp(
-          this.position.x,
-          target.x,
-          0.28
-        );
-
-
-      this.position.y =
-        lerp(
-          this.position.y,
-          target.y,
-          0.28
-        );
-
-
-   
-
-      if (mouth) {
-
-        const dx =
-          mouth.x -
-          this.position.x;
-
-        const dy =
-          mouth.y -
-          this.position.y;
-
-
-        this.angle =
-          Math.atan2(
-            dy,
-            dx
-          );
-      }
+      this.y +=
+        (this.targetY - this.y) *
+        Math.min(dt * 12, 1);
     }
 
+    /*
+      The cigarette points toward the mouth.
+
+      Therefore:
+      +X = mouth side
+      -X = lit side
+    */
+
+    if (mouth) {
+      const dx =
+        mouth.x - this.x;
+
+      const dy =
+        mouth.y - this.y;
+
+      this.angle =
+        Math.atan2(dy, dx);
+    }
   }
 
-
-
-  isNearMouth(
-    mouth
-  ) {
-
-    if (
-      !mouth ||
-      !this.target
-    ) {
-
+  isNearMouth(mouth) {
+    if (!mouth) {
       return false;
     }
 
+    const dx =
+      mouth.x - this.x;
 
-    return (
-      Math.hypot(
+    const dy =
+      mouth.y - this.y;
 
-        this.position.x -
-          mouth.x,
-
-        this.position.y -
-          mouth.y
-
-      ) < 85
-    );
-
-  }
-
-
-  takePuff() {
-
-    if (
-      this.finished ||
-      this.puffs >= 3
-    ) {
-
-      return false;
-    }
-
-
-    this.puffs +=
-      1;
-
-
-    this.remaining =
-      Math.max(
-        0,
-        1 -
-          this.puffs /
-            3
+    const distance =
+      Math.sqrt(
+        dx * dx +
+        dy * dy
       );
 
-
-
-    if (
-      this.puffs >= 3
-    ) {
-
-      this.finished =
-        true;
-
-      this.dropY =
-        0;
-    }
-
-
-    return true;
-
+    return distance < 85;
   }
 
+  takePuff() {
+    if (this.finished) {
+      return false;
+    }
 
+    if (this.puffs >= this.maxPuffs) {
+      return false;
+    }
 
-  updateDrop(
-    dt
-  ) {
+    this.puffs++;
 
+    if (this.puffs >= this.maxPuffs) {
+      this.finished = true;
+    }
+
+    return true;
+  }
+
+  /*
+    Get the lit/ember end in screen coordinates.
+  */
+
+  getLitEnd() {
+    const remaining =
+      1 - this.puffs / this.maxPuffs;
+
+    const currentWidth =
+      this.width *
+      Math.max(remaining, 0.2);
+
+    /*
+      Lit side is -X because +X points toward mouth.
+    */
+
+    const localX =
+      -currentWidth / 2;
+
+    const localY = 0;
+
+    return {
+      x:
+        this.x +
+        Math.cos(this.angle) *
+          localX -
+        Math.sin(this.angle) *
+          localY,
+
+      y:
+        this.y +
+        Math.sin(this.angle) *
+          localX +
+        Math.cos(this.angle) *
+          localY
+    };
+  }
+
+  updateDrop(dt) {
     if (
       !this.finished ||
       this.dropComplete
     ) {
-
       return;
     }
-
-
-    
 
     this.dropVelocity +=
       900 * dt;
 
+    this.y +=
+      this.dropVelocity * dt;
 
-    this.dropY +=
-      this.dropVelocity *
-      dt;
+    this.angle += dt * 4;
 
-
-    if (
-      this.dropY >
-      600
-    ) {
-
-      this.dropComplete =
-        true;
+    if (this.y > 800) {
+      this.dropComplete = true;
     }
-
   }
 
-
-
-  draw(
-    ctx
-  ) {
-
-    const x =
-      this.position.x;
-
-
-    const y =
-      this.position.y +
-      this.dropY;
-
-
+  draw(ctx) {
     ctx.save();
 
+    /*
+      Pixel-art look.
+    */
+
+    ctx.imageSmoothingEnabled = false;
 
     ctx.translate(
-      x,
-      y
+      Math.round(this.x),
+      Math.round(this.y)
     );
 
+    ctx.rotate(this.angle);
 
-    ctx.rotate(
-      this.angle
-    );
+    const remaining =
+      1 - this.puffs / this.maxPuffs;
 
+    const currentWidth =
+      this.width *
+      Math.max(remaining, 0.2);
 
+    const h = this.height;
 
+    const filterWidth = 18;
 
     const bodyWidth =
-      this.width *
-      this.remaining;
-
-
-    if (
-      bodyWidth > 2
-    ) {
-
-      const gradient =
-        ctx.createLinearGradient(
-          0,
-          0,
-          bodyWidth,
-          0
-        );
-
-
-      gradient.addColorStop(
-        0,
-        "#f7f2df"
+      Math.max(
+        18,
+        currentWidth -
+          filterWidth
       );
 
+    /*
+      IMPORTANT:
 
-      gradient.addColorStop(
-        1,
-        "#d8cbb1"
-      );
+      +X points toward mouth.
 
+      Therefore brown filter is
+      on the RIGHT side.
 
-      ctx.fillStyle =
-        gradient;
+      Lit end is on the LEFT side.
 
+      [🔥 WHITE BODY][BROWN FILTER] 👄
+    */
 
-      ctx.fillRect(
+    const left =
+      -currentWidth / 2;
 
-        0,
+    /*
+      White cigarette body
+    */
 
-        -this.height / 2,
-
-        bodyWidth,
-
-        this.height
-
-      );
-
-    }
-
-
-
-
-    if (
-      bodyWidth > 1
-    ) {
-
-      ctx.fillStyle =
-        "#ff5a2a";
-
-
-      ctx.beginPath();
-
-
-      ctx.arc(
-
-        bodyWidth,
-
-        0,
-
-        7,
-
-        0,
-
-        Math.PI * 2
-
-      );
-
-
-      ctx.fill();
-
-
-      ctx.fillStyle =
-        "#ffd166";
-
-
-      ctx.beginPath();
-
-
-      ctx.arc(
-
-        bodyWidth,
-
-        0,
-
-        3,
-
-        0,
-
-        Math.PI * 2
-
-      );
-
-
-      ctx.fill();
-
-    }
-
-
-
-    ctx.fillStyle =
-      "#d6a77a";
-
+    ctx.fillStyle = "#eeeeea";
 
     ctx.fillRect(
-
+      left,
+      -h / 2,
       bodyWidth,
-
-      -this.height / 2,
-
-      30,
-
-      this.height
-
+      h
     );
 
+    /*
+      Pixel gray underside.
+    */
 
-    ctx.strokeStyle =
-      "rgba(255,255,255,.5)";
+    ctx.fillStyle = "#c7c7c2";
 
-
-    ctx.strokeRect(
-
+    ctx.fillRect(
+      left,
+      h / 2 - 2,
       bodyWidth,
-
-      -this.height / 2,
-
-      30,
-
-      this.height
-
+      2
     );
 
+    /*
+      Brown filter toward mouth.
+    */
+
+    const filterX =
+      left + bodyWidth;
+
+    ctx.fillStyle = "#a86632";
+
+    ctx.fillRect(
+      filterX,
+      -h / 2,
+      filterWidth,
+      h
+    );
+
+    /*
+      Dark filter pixels.
+    */
+
+    ctx.fillStyle = "#75431f";
+
+    ctx.fillRect(
+      filterX + 3,
+      -h / 2,
+      3,
+      h
+    );
+
+    ctx.fillRect(
+      filterX + 9,
+      -h / 2 + 2,
+      3,
+      3
+    );
+
+    ctx.fillRect(
+      filterX + 14,
+      -h / 2,
+      2,
+      h
+    );
+
+    /*
+      Burning ember at the LEFT/lit end.
+    */
+
+    ctx.fillStyle = "#e84b21";
+
+    ctx.fillRect(
+      left - 4,
+      -h / 2,
+      4,
+      h
+    );
+
+    ctx.fillStyle = "#ff8a22";
+
+    ctx.fillRect(
+      left - 3,
+      -2,
+      3,
+      4
+    );
+
+    ctx.fillStyle = "#fff2a8";
+
+    ctx.fillRect(
+      left - 1,
+      -1,
+      1,
+      2
+    );
 
     ctx.restore();
-
-
-
-    this.tip = {
-
-      x:
-        x +
-        Math.cos(
-          this.angle
-        ) *
-        (bodyWidth + 8),
-
-      y:
-        y +
-        Math.sin(
-          this.angle
-        ) *
-        (bodyWidth + 8)
-
-    };
-
   }
-
 }
