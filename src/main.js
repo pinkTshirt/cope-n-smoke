@@ -1,45 +1,86 @@
 import "./styles/main.css";
 
 import { CameraController } from "./camera.js";
+
 import { VisionTracker } from "./tracking/visionTracker.js";
+
 import { Cigarette } from "./cigarette/Cigarette.js";
+
 import { SmokeSystem } from "./effects/smoke.js";
+
 import { BreathDetector } from "./detection/breathDetector.js";
 
 
+/* --------------------------------------------------
+   DOM
+-------------------------------------------------- */
+
 const video =
-  document.querySelector("#camera");
+  document.getElementById("camera");
 
 const canvas =
-  document.querySelector("#overlay");
+  document.getElementById("overlay");
 
 const ctx =
   canvas.getContext("2d");
 
-const statusEl =
-  document.querySelector("#status");
+const startCard =
+  document.getElementById("startCard");
 
 const startButton =
-  document.querySelector("#start-camera");
+  document.getElementById("startButton");
 
 const resetButton =
-  document.querySelector("#reset");
+  document.getElementById("resetButton");
 
 const debugToggle =
-  document.querySelector("#debug");
+  document.getElementById("debugToggle");
 
-const startCard =
-  document.querySelector("#start-card");
+const statusElement =
+  document.getElementById("status");
 
-
-// Puff indicators
+const puffCount =
+  document.getElementById("puffCount");
 
 const puffDots = [
-  document.querySelector("#puff-1"),
-  document.querySelector("#puff-2"),
-  document.querySelector("#puff-3")
+  document.getElementById("puff1"),
+  document.getElementById("puff2"),
+  document.getElementById("puff3")
 ];
 
+
+/* --------------------------------------------------
+   Safety check
+-------------------------------------------------- */
+
+if (!video) {
+  throw new Error(
+    'Missing element: "#camera"'
+  );
+}
+
+if (!canvas) {
+  throw new Error(
+    'Missing element: "#overlay"'
+  );
+}
+
+if (!startButton) {
+  throw new Error(
+    'Missing element: "#startButton"'
+  );
+}
+
+if (!resetButton) {
+  throw new Error(
+    'Missing element: "#resetButton"'
+  );
+}
+
+
+/* --------------------------------------------------
+   Systems
+-------------------------------------------------- */
 
 const camera =
   new CameraController(video);
@@ -57,6 +98,9 @@ const breathDetector =
   new BreathDetector();
 
 
+/* --------------------------------------------------
+   State
+-------------------------------------------------- */
 
 let running = false;
 
@@ -65,105 +109,96 @@ let lastFrame =
 
 let lastVideoTime = -1;
 
+let debugEnabled = false;
 
-function resizeCanvas() {
 
-  const rect =
-    video.getBoundingClientRect();
+/* --------------------------------------------------
+   UI
+-------------------------------------------------- */
 
-  const dpr =
-    Math.min(
-      window.devicePixelRatio || 1,
-      2
-    );
-
-  canvas.width =
-    Math.max(
-      1,
-      Math.round(rect.width * dpr)
-    );
-
-  canvas.height =
-    Math.max(
-      1,
-      Math.round(rect.height * dpr)
-    );
-
-  ctx.setTransform(
-    dpr,
-    0,
-    0,
-    dpr,
-    0,
-    0
-  );
+function setStatus(message) {
+  statusElement.textContent =
+    message;
 }
-
-
-
-function setStatus(text) {
-
-  statusEl.textContent =
-    text;
-}
-
 
 function updatePuffUI() {
+  puffCount.textContent =
+    `Puffs: ${cigarette.puffs}/3`;
 
   puffDots.forEach(
     (dot, index) => {
+      if (!dot) return;
 
       dot.classList.toggle(
-        "used",
+        "active",
         index < cigarette.puffs
       );
-
     }
   );
 }
 
 
+/* --------------------------------------------------
+   Canvas
+-------------------------------------------------- */
 
-function clearCanvas() {
-
+function resizeCanvas() {
   const rect =
     video.getBoundingClientRect();
 
+  const width =
+    Math.round(rect.width);
+
+  const height =
+    Math.round(rect.height);
+
+  if (
+    canvas.width !== width ||
+    canvas.height !== height
+  ) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+}
+
+function clearCanvas() {
   ctx.clearRect(
     0,
     0,
-    rect.width,
-    rect.height
+    canvas.width,
+    canvas.height
   );
 }
 
-//debug
+
+/* --------------------------------------------------
+   Debug
+-------------------------------------------------- */
+
 function drawDebug(
   hand,
-  face,
-  mouth
+  face
 ) {
-
-  if (!debugToggle.checked) {
+  if (!debugEnabled) {
     return;
   }
 
   ctx.save();
 
-
-  // Hand
-
-  ctx.fillStyle =
-    "#00e5ff";
+  /*
+    Hand point
+  */
 
   if (hand?.indexTip) {
+    ctx.fillStyle =
+      "#00e5ff";
 
     ctx.beginPath();
 
     ctx.arc(
       hand.indexTip.x,
       hand.indexTip.y,
-      5,
+      7,
       0,
       Math.PI * 2
     );
@@ -171,20 +206,20 @@ function drawDebug(
     ctx.fill();
   }
 
-
-
+  /*
+    Mouth point
+  */
 
   if (face?.mouthCenter) {
-
     ctx.fillStyle =
-      "#ff4f81";
+      "#ff4d8d";
 
     ctx.beginPath();
 
     ctx.arc(
       face.mouthCenter.x,
       face.mouthCenter.y,
-      5,
+      6,
       0,
       Math.PI * 2
     );
@@ -192,36 +227,18 @@ function drawDebug(
     ctx.fill();
   }
 
-
-
-  if (mouth) {
-
-    ctx.strokeStyle =
-      "#ffffff";
-
-    ctx.lineWidth = 2;
-
-    ctx.strokeRect(
-      mouth.x - 12,
-      mouth.y - 8,
-      24,
-      16
-    );
-  }
-
-
   ctx.restore();
 }
 
 
-//animation loop
+/* --------------------------------------------------
+   Tracking loop
+-------------------------------------------------- */
 
 function loop(now) {
-
   if (!running) {
     return;
   }
-
 
   const dt =
     Math.min(
@@ -229,171 +246,223 @@ function loop(now) {
       0.05
     );
 
-  lastFrame =
-    now;
+  lastFrame = now;
 
 
+  /*
+    Only process a new video frame.
+  */
 
   if (
     video.readyState >= 2 &&
-    video.currentTime !== lastVideoTime
+    video.currentTime !==
+      lastVideoTime
   ) {
-
     lastVideoTime =
       video.currentTime;
 
+    try {
+      const results =
+        tracker.detect(
+          video,
+          now
+        );
 
-    const results =
-      tracker.detect(
-        video,
-        now
-      );
+      const rect =
+        video.getBoundingClientRect();
 
+      const hand =
+        tracker.getHandInteraction(
+          results,
+          rect
+        );
 
-    const rect =
-      video.getBoundingClientRect();
-
-
-    const hand =
-      tracker.getHandInteraction(
-        results,
-        rect
-      );
-
-
-    const face =
-      tracker.getFaceInteraction(
-        results,
-        rect
-
-
-    const target =
-      hand?.indexTip
-        ? {
-
-            x:
-              hand.indexTip.x +
-              hand.direction.x * 30,
-
-            y:
-              hand.indexTip.y +
-              hand.direction.y * 30
-
-          }
-        : null;
-
-
-    cigarette.update(
-      dt,
-      target,
-      face?.mouthCenter ?? null
-    );
-
-
-    const mouth =
-      face
-        ? {
-            x: face.mouthCenter.x,
-            y: face.mouthCenter.y
-          }
-        : null;
-
-
-
-    const nearMouth =
-      cigarette.isNearMouth(
-        mouth
-      );
-
-
-    const breathEvent =
-      breathDetector.update(
-        face,
-        nearMouth,
-        now
-      );
-
-
-    if (
-      breathEvent === "puff"
-    ) {
-
-      const accepted =
-        cigarette.takePuff();
-
-
-      if (accepted) {
-
-        smoke.emit(
-          cigarette.tip.x,
-          cigarette.tip.y,
-          26
+      const face =
+        tracker.getFaceInteraction(
+          results,
+          rect
         );
 
 
-        setStatus(
-          cigarette.finished
-            ? "Cigarette finished — dropping..."
-            : `Puff ${cigarette.puffs}/3`
-        );
+      /*
+        Cigarette follows index finger.
+      */
 
+      let target = null;
 
-        updatePuffUI();
+      if (hand?.indexTip) {
+        target = {
+          x:
+            hand.indexTip.x +
+            hand.direction.x * 28,
+
+          y:
+            hand.indexTip.y +
+            hand.direction.y * 28
+        };
       }
-    }
 
-    if (cigarette.finished) {
 
-      cigarette.updateDrop(
-        dt
+      /*
+        Cigarette follows hand
+        and rotates toward mouth.
+      */
+
+      cigarette.update(
+        dt,
+        target,
+        face?.mouthCenter ?? null
       );
 
 
-      if (cigarette.dropComplete) {
-
-        cigarette.spawn();
-
-        updatePuffUI();
-
-        setStatus(
-          "New cigarette ready."
+      const nearMouth =
+        cigarette.isNearMouth(
+          face?.mouthCenter ?? null
         );
+
+
+      /*
+        Detect inhale / exhale.
+      */
+
+      const breathEvent =
+        breathDetector.update(
+          face,
+          nearMouth,
+          now
+        );
+
+
+      /*
+        INHALE:
+        shorten cigarette.
+        NO smoke.
+      */
+
+      if (
+        breathEvent ===
+        "inhale"
+      ) {
+        const accepted =
+          cigarette.takePuff();
+
+        if (accepted) {
+          updatePuffUI();
+
+          if (
+            cigarette.finished
+          ) {
+            setStatus(
+              "Cigarette finished — dropping..."
+            );
+          } else {
+            setStatus(
+              `Puff ${cigarette.puffs}/3`
+            );
+          }
+        }
       }
-    }
-
-    clearCanvas();
 
 
-    cigarette.draw(
-      ctx
-    );
+      /*
+        EXHALE:
+        release smoke only.
+      */
 
+      if (
+  breathEvent ===
+  "exhale"
+) {
+  /*
+    EXHALE SMOKE COMES FROM THE MOUTH,
+    NOT THE CIGARETTE.
 
-    smoke.update(
-      dt
-    );
+    This means the cigarette can be
+    anywhere on screen when you exhale.
+  */
 
+  if (face?.mouthCenter) {
+    const mouth = face.mouthCenter;
 
-    smoke.draw(
-      ctx
-    );
-
-
-    drawDebug(
-      hand,
-      face,
+    console.log(
+      "💨 EXHALE — smoke from mouth",
       mouth
     );
+
+    smoke.emit(
+      mouth.x,
+      mouth.y,
+      60
+    );
+
+    setStatus(
+      "💨 Exhale — smoke released"
+    );
   }
-
-
-  requestAnimationFrame(
-    loop
-  );
 }
 
-async function start() {
 
+      /*
+        Finished cigarette drops.
+      */
+
+      if (
+        cigarette.finished
+      ) {
+        cigarette.updateDrop(dt);
+
+        if (
+          cigarette.dropComplete
+        ) {
+          cigarette.spawn();
+
+          updatePuffUI();
+
+          setStatus(
+            "New cigarette ready."
+          );
+        }
+      }
+
+
+      /*
+        Draw.
+      */
+
+      clearCanvas();
+
+      cigarette.draw(ctx);
+
+      smoke.update(dt);
+
+      smoke.draw(ctx);
+
+      drawDebug(
+        hand,
+        face
+      );
+
+    } catch (error) {
+      console.error(
+        "Tracking error:",
+        error
+      );
+
+      setStatus(
+        "Tracking error — check Console."
+      );
+    }
+  }
+
+  requestAnimationFrame(loop);
+}
+
+
+/* --------------------------------------------------
+   Start camera
+-------------------------------------------------- */
+
+async function start() {
   startButton.disabled =
     true;
 
@@ -401,15 +470,35 @@ async function start() {
     "Loading hand and face tracking..."
   );
 
-
   try {
+    /*
+      Load MediaPipe first.
+    */
 
     await tracker.load();
 
+    setStatus(
+      "Tracking loaded. Starting camera..."
+    );
+
+
+    /*
+      Start webcam.
+    */
+
     await camera.start();
+
+
+    /*
+      Size canvas.
+    */
 
     resizeCanvas();
 
+
+    /*
+      Hide start screen.
+    */
 
     startCard.classList.add(
       "hidden"
@@ -419,63 +508,78 @@ async function start() {
     resetButton.disabled =
       false;
 
-
-    running =
-      true;
-
+    running = true;
 
     setStatus(
       "Camera active — move your hand into view."
     );
 
+    lastFrame =
+      performance.now();
 
     requestAnimationFrame(
       loop
     );
 
   } catch (error) {
-
     console.error(
+      "START ERROR:",
       error
     );
-
 
     startButton.disabled =
       false;
 
-
     setStatus(
-      `Could not start camera: ${error.message}`
+      `Could not start: ${
+        error?.message ||
+        String(error)
+      }`
     );
   }
 }
 
 
+/* --------------------------------------------------
+   Reset
+-------------------------------------------------- */
+
+function reset() {
+  cigarette.reset();
+
+  smoke.clear();
+
+  updatePuffUI();
+
+  setStatus(
+    running
+      ? "Cigarette reset."
+      : "Camera inactive"
+  );
+}
+
+
+/* --------------------------------------------------
+   Events
+-------------------------------------------------- */
 
 startButton.addEventListener(
   "click",
   start
 );
 
-
 resetButton.addEventListener(
   "click",
-  () => {
-
-    cigarette.spawn();
-
-    smoke.clear();
-
-    breathDetector.reset();
-
-    updatePuffUI();
-
-    setStatus(
-      "Cigarette reset."
-    );
-  }
+  reset
 );
 
+debugToggle.addEventListener(
+  "change",
+  () => {
+    debugEnabled =
+      debugToggle.checked;
+  }
+);
 
 window.addEventListener(
   "resize",
@@ -483,6 +587,12 @@ window.addEventListener(
 );
 
 
-// Initial UI
+/* --------------------------------------------------
+   Initial UI
+-------------------------------------------------- */
 
 updatePuffUI();
+
+setStatus(
+  "Camera inactive"
+);
