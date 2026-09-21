@@ -1,182 +1,116 @@
 export class SmokeSystem {
-
   constructor() {
-
-    this.particles =
-      [];
-
+    this.particles = [];
   }
 
+  emit(x, y, count = 60) {
+    console.log(
+      "SMOKE EMITTED AT:",
+      x,
+      y
+    );
 
-  emit(
-    x,
-    y,
-    count = 20
-  ) {
-
-    for (
-      let i = 0;
-      i < count;
-      i++
-    ) {
-
+    for (let i = 0; i < count; i++) {
       this.particles.push({
+        x:
+          x +
+          (Math.random() - 0.5) * 8,
 
-        x,
-
-        y,
+        y:
+          y +
+          (Math.random() - 0.5) * 8,
 
         vx:
-          (Math.random() - 0.5) *
-          35,
+          (Math.random() - 0.5) * 35,
 
         vy:
-          -20 -
-          Math.random() *
-          45,
+          -30 -
+          Math.random() * 60,
 
         size:
-          4 +
-          Math.random() *
-          8,
+          5 +
+          Math.random() * 9,
 
         life:
-          0,
+          2 +
+          Math.random() * 2,
 
         maxLife:
-          0.8 +
-          Math.random() *
-          1.2,
-
-        wobble:
-          Math.random() *
-          Math.PI *
-          2
-
+          2 +
+          Math.random() * 2
       });
-
     }
-
   }
 
+  update(dt) {
+    for (const p of this.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
 
+      // Smoke rises
+      p.vy -= 5 * dt;
 
-  update(
-    dt
-  ) {
+      // Smoke slowly gets bigger
+      p.size += 7 * dt;
 
-    for (
-      const p of this.particles
-    ) {
-
-      p.life +=
-        dt;
-
-
-      p.x +=
-        p.vx *
-        dt;
-
-
-      p.y +=
-        p.vy *
-        dt;
-
-
-
-      p.vx +=
-        Math.sin(
-          p.life * 3 +
-          p.wobble
-        ) *
-        8 *
-        dt;
-
-
-
-      p.vy -=
-        4 *
-        dt;
-
-
-
-      p.size +=
-        7 *
-        dt;
-
+      p.life -= dt;
     }
-
-
 
     this.particles =
       this.particles.filter(
-        p =>
-          p.life <
-          p.maxLife
+        (p) => p.life > 0
       );
-
   }
 
-  draw(
-    ctx
-  ) {
-
+  draw(ctx) {
     ctx.save();
 
+    ctx.imageSmoothingEnabled =
+      false;
 
-    for (
-      const p of this.particles
-    ) {
-
+    for (const p of this.particles) {
       const alpha =
-        Math.max(
-          0,
-          1 -
-            p.life /
-              p.maxLife
-        ) *
-        0.42;
+        Math.min(
+          0.8,
+          p.life / p.maxLife
+        );
 
+      ctx.globalAlpha = alpha;
 
       ctx.fillStyle =
-        `rgba(235,235,235,${alpha})`;
+        "#d6d6d6";
 
+      const size =
+        Math.max(
+          4,
+          Math.round(p.size)
+        );
 
-      ctx.beginPath();
+      /*
+        Pixelated smoke.
+      */
 
-
-      ctx.arc(
-
-        p.x,
-
-        p.y,
-
-        p.size,
-
-        0,
-
-        Math.PI * 2
-
+      ctx.fillRect(
+        Math.round(p.x),
+        Math.round(p.y),
+        size,
+        size
       );
 
-
-      ctx.fill();
-
+      if (size > 7) {
+        ctx.fillRect(
+          Math.round(p.x - 4),
+          Math.round(p.y + 5),
+          Math.round(size * 0.5),
+          Math.round(size * 0.5)
+        );
+      }
     }
 
-
     ctx.restore();
-
   }
-
-
-
 
   clear() {
-
-    this.particles =
-      [];
-
+    this.particles = [];
   }
-
 }
